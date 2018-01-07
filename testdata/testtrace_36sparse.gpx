@@ -1,0 +1,47 @@
+<?xml version="1.0"?>
+<gpx version="1.1" creator="GDAL 2.1.3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ogr="http://osgeo.org/gdal" xmlns="http://www.topografix.com/GPX/1/1" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
+<metadata><bounds minlat="37.773714615399761" minlon="-122.465220000000002" maxlat="37.779870769199768" maxlon="-122.461830000000006"/></metadata>              
+<trk>
+  <trkseg>
+    <trkpt lat="37.779870769199768" lon="-122.46426">
+      <time>2015-05-28T09:27:39Z</time>
+    </trkpt>
+    <trkpt lat="37.777419999999765" lon="-122.46408">
+      <time>2015-05-28T09:28:30Z</time>
+    </trkpt>
+    <trkpt lat="37.777153333299744" lon="-122.46294">
+      <time>2015-05-28T09:29:30Z</time>
+    </trkpt>
+    <trkpt lat="37.774493333299752" lon="-122.46275">
+      <time>2015-05-28T09:30:30Z</time>
+    </trkpt>
+    <trkpt lat="37.773967692299749" lon="-122.46378">
+      <time>2015-05-28T09:31:30Z</time>
+    </trkpt>
+    <trkpt lat="37.777089999999767" lon="-122.464046154">
+      <time>2015-05-28T09:32:30Z</time>
+    </trkpt>
+    <trkpt lat="37.779119999999757" lon="-122.463726922999982">
+      <time>2015-05-28T09:33:30Z</time>
+    </trkpt>
+    <trkpt lat="37.776724999999757" lon="-122.46291">
+      <time>2015-05-28T09:34:30Z</time>
+    </trkpt>
+    <trkpt lat="37.775379999999764" lon="-122.464555">
+      <time>2015-05-28T09:35:30Z</time>
+    </trkpt>
+    <trkpt lat="37.777631999999755" lon="-122.465116">
+      <time>2015-05-28T09:36:30Z</time>
+    </trkpt>
+    <trkpt lat="37.779116363599762" lon="-122.463799091">
+      <time>2015-05-28T09:37:30Z</time>
+    </trkpt>
+    <trkpt lat="37.777529999999764" lon="-122.46189">
+      <time>2015-05-28T09:38:30Z</time>
+    </trkpt>
+    <trkpt lat="37.776739999999734" lon="-122.46183">
+      <time>2015-05-28T09:39:14Z</time>
+    </trkpt>
+  </trkseg>
+</trk>
+</gpx>

@@ -1,0 +1,3 @@
+(Intercept)	4.5289042565
+frechet_dist	-0.0446756552965
+ll_topol_min	0.00200883204845

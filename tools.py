@@ -49,9 +49,10 @@ def getPgEngine(pgLogin=None):
     return engine
 
 class dbConnection():
-    def __init__(self, user=None, db=None, host=None, requirePassword=True, pgLogin=None, schema=None, curType='default', verbose=True, logger=None):
+    def __init__(self, user=None, db=None, host=None, requirePassword=True, pgLogin=None, schema=None, role=None,curType='default', verbose=True, logger=None):
         """
         This returns a connection to the database.
+        If role is not None, new tables will be owned by this role (rather than user)
         """
         if pgLogin is not None:
             user=pgLogin['user']
@@ -74,7 +75,7 @@ class dbConnection():
         search_path=[self.default_schema]+['public'] 
         self.execute('SET search_path = '+','.join(search_path)) 
         print('SET search_path = '+','.join(search_path))
-        self.execute('''SET role parkingusers;''') # ensures that new tables are owned by parkingusers
+        if role is not None: self.execute('''SET role %s;''' % role) # ensures that new tables are owned by parkingusers
         assert not self.cursor.closed
         self.verbose = verbose
         self.logger = logger

@@ -78,7 +78,7 @@ class test_mapmatch():
         assert self.mm.uturnFrcs==uturnFrcs[gpxFn]
 
         if self.verbose: print ', '.join([str(np.round(ll,4)) for ll in self.mm.LL])
-        if not all([np.round(ll1,4)==ll2 for ll1,ll2 in zip(self.mm.LL,LLs[gpxFn])]):
+        if not all([np.round(ll1,2)==np.round(ll2,2) for ll1,ll2 in zip(self.mm.LL,LLs[gpxFn])]):
             # this may be a rounding error - need further investigation
             print('Warning: likelihoods do not match for file %s. Calculated LLs are %s' % (gpxFn, self.mm.LL))
 

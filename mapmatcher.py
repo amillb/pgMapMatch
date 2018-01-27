@@ -193,8 +193,8 @@ class mapMatcher():
             if not all(result[0]):
                 raise Exception('GPS trace geometry column %s must be LineString with M coordinate' % geomName )
         
-        cmd = '''SELECT %(streetIdCol)s, %(source)s, %(target)s, %(cost)s, %(reverse_cost)s, %(km)s, 
-               %(kmh)s %(fwayCols)s FROM %(streetsTable)s''' % self.cmdDict
+        cmd = '''SELECT %(streetIdCol)s, %(source)s, %(target)s, %(cost)s::real, %(reverse_cost)s::real, %(km)s::real, 
+               %(kmh)s::real %(fwayCols)s FROM %(streetsTable)s''' % self.cmdDict
         edgesDf = pd.DataFrame(self.db.execfetch(cmd), columns = ['edge', 'source', 'target', 'cost', 'reverse_cost', 'km', 'kmh']+fwayColList).set_index('edge')
         
         # overwrite cost if speed limit is low (so likely to be exceeded)

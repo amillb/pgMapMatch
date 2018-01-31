@@ -193,7 +193,7 @@ class mapMatcher():
             if not all(result[0]):
                 raise Exception('GPS trace geometry column %s must be LineString with M coordinate' % geomName )
         
-        cmd = '''SELECT %(streetIdCol)s, %(source)s, %(target)s, %(cost)s::real, %(reverse_cost)s::real, %(km)s::real, 
+        cmd = '''SELECT %(streetIdCol)s, %(source)s::integer, %(target)s::integer, %(cost)s::real, %(reverse_cost)s::real, %(km)s::real, 
                %(kmh)s::real %(fwayCols)s FROM %(streetsTable)s''' % self.cmdDict
         edgesDf = pd.DataFrame(self.db.execfetch(cmd), columns = ['edge', 'source', 'target', 'cost', 'reverse_cost', 'km', 'kmh']+fwayColList).set_index('edge')
         
@@ -209,6 +209,7 @@ class mapMatcher():
         
         # DOK matrix (like a dictionary) of shortest paths from node1 to node2
         maxN = max(edgesDf.source.max(), edgesDf.target.max()) + 1
+        if maxN<=1: raise Exception('Streets table %s cannot be read. %s' % streetsTable)
         self.costMatrix = sparse.dok_matrix((maxN, maxN))
         self.distMatrix = sparse.dok_matrix((maxN, maxN))
 

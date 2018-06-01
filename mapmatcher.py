@@ -183,7 +183,13 @@ class mapMatcher():
               'gpsError':gpsError, 'gpsError_fway':gpsError_fway}
         fwayColList = [cc.strip() for cc in fwayCols.split(',')]
 
-        
+        # Check geometry types of streets
+        result=self.db.execfetch('''SELECT DISTINCT ST_GeometryType(%(streetGeomCol)s) FROM %(streetsTable)s;''' % self.cmdDict)
+        if any([rr[0] == 'ST_MultiLineString' for rr in result]):    
+            raise Exception('Streets geometry column %s must be ST_LineString, not ST_MultiLineString. Use ST_LineMerge() to convert your table.')
+        if not all([rr[0] == 'ST_LineString' for rr in result]):    
+            raise Exception('Streets geometry column %s must be ST_LineString, not %s.' % (streetGeomCol, result[0][0]))
+
         # Check geometry types of trace table
         if traceTable is not None:
             result=self.db.execfetch('''SELECT ST_M(geom) is Not Null, test1, test2 FROM
@@ -212,6 +218,12 @@ class mapMatcher():
         if maxN<=1: raise Exception('Streets table %s cannot be read. %s' % streetsTable)
         self.costMatrix = sparse.dok_matrix((maxN, maxN))
         self.distMatrix = sparse.dok_matrix((maxN, maxN))
+        
+        try:
+            self.costMatrix.update({})
+        except NotImplementedError: # see https://github.com/scipy/scipy/issues/8338
+            self.costMatrix.update = self.costMatrix._update
+            self.distMatrix.update = self.distMatrix._update        
 
         self.timing = {'updateCostMatrix':0,'fillRouteGaps':0,'getPoints':0,'iterator':0,'decode':0,'median_times':[]}
 
@@ -667,8 +679,8 @@ class mapMatcher():
                 dNode = self.edgesDf.target[edge] if self.edgesDf.source[edge] == node else  self.edgesDf.source[edge]
                 
             if oNode!=dNode: # missing edges
-                cmd = '''SELECT array_agg(id2) AS edges FROM pgr_dijkstra(
-                            'SELECT %(streetIdCol)s, %(source)s, %(target)s, %(cost)s, %(reverse_cost)s FROM %(streetsTable)s', %(oNode)s, %(dNode)s, True, True);
+                cmd = '''SELECT array_agg(edge) AS edges FROM pgr_dijkstra(
+                            'SELECT %(streetIdCol)s, %(source)s, %(target)s, %(cost)s, %(reverse_cost)s FROM %(streetsTable)s', %(oNode)s, %(dNode)s, True);
                       ''' % dict(self.cmdDict,**{'oNode':str(oNode), 'dNode':str(dNode)})
                 result = self.db.execfetch(cmd)
                 if result[0][0] is None: # because of a disconnected network/islands

@@ -42,7 +42,7 @@ class test_mapmatch():
                       'testtrace_65.gpx':      ['ST_Transform(ST_SetSRID(ST_MakePoint(-122.438457692,37.7616715385),4326),3493)', 'ST_Transform(ST_SetSRID(ST_MakePoint(-122.438007857,37.7580557143),4326),3493)']}  
         uturnFrcs  = {'testtrace_36.gpx':[-1]*21,
                        'testtrace_36sparse.gpx':[-1]*21,
-                       'testtrace_36Uturns.gpx':[-1]*20+[(0.034169679384602601, 0.34231930206380401), -1, -1],
+                       'testtrace_36Uturns.gpx':[-1]*20+[(0.0341696794, 0.3423193021), -1, -1],
                       'testtrace_65.gpx':[-1]*15}   
         LLs = {'testtrace_36.gpx':       [-0.5559, -3.2346, -0.2822, -24.7070, -0.8357, -21.4633],
                'testtrace_36sparse.gpx': [-0.7538, -3.2346, -0.2106, -0.5969, -1.0613, -3.3082],
@@ -75,6 +75,7 @@ class test_mapmatch():
         assert self.mm.startEndPts==startEndPts[gpxFn]
 
         if self.verbose: print self.mm.uturnFrcs
+        self.mm.uturnFrcs = [ut if isinstance(ut, int) else (np.round(ut[0],10), np.round(ut[1],10)) for ut in self.mm.uturnFrcs]
         assert self.mm.uturnFrcs==uturnFrcs[gpxFn]
 
         if self.verbose: print ', '.join([str(np.round(ll,4)) for ll in self.mm.LL])

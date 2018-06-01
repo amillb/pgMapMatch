@@ -38,7 +38,7 @@ mm.getMatchScore()  # returns the match score (probability that the match is goo
 
 The following Python packages:  
 * numpy 1.11.3+  
-* scipy 0.19.0 WARNING - not currently compatible with scipy 1.0.0 for [this reason](https://github.com/scipy/scipy/issues/8338).
+* scipy 0.19.0+
 * pandas 0.19.2+  
 * gpxpy 1.1.2+  
 * psycopg2 2.5.2+  

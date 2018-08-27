@@ -190,6 +190,11 @@ class mapMatcher():
         if not all([rr[0] == 'ST_LineString' for rr in result]):    
             raise Exception('Streets geometry column %s must be ST_LineString, not %s.' % (streetGeomCol, result[0][0]))
 
+        # Check length of table
+        nsts = self.db.execfetch('''SELECT COUNT(*) FROM %(streetsTable)s;''' % self.cmdDict)
+        if nsts[0][0]>1000000:
+            print('Streets table has %d rows, which may impair pgrouting performance. Consider clipping the table to your area of interest.' % nsts[0][0])
+
         # Check geometry types of trace table
         if traceTable is not None:
             result=self.db.execfetch('''SELECT ST_M(geom) is Not Null, test1, test2 FROM

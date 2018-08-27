@@ -358,6 +358,8 @@ class mapMatcher():
         pts = self.db.execfetch(cmd)
         if pts is None or pts==[]: 
             self.ptsDf, self.nids = None, []
+            print('No streets found within the tolerance of the trace.')
+            print('You might want to check the projection of the streets table and trace, or the gpsError configuration parameter.')
             return
         self.ptsDf = pd.DataFrame(pts, columns = ['nid', 'edge', 'dist', 'frcalong', 'secs']).set_index('edge')
         

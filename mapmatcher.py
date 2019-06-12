@@ -231,7 +231,10 @@ class mapMatcher():
         edgesDf.loc[mask, 'reverse_cost'] = edgesDf.loc[mask, 'reverse_cost']*(edgesDf.loc[mask, 'kmh']/15.)
         self.edgesDf = edgesDf
 
-        self.uturncost = (self.edgesDf.cost.median()+self.edgesDf.reverse_cost.median())/2.
+        if uturnCost is None: # not defined in config file
+            self.uturncost = (self.edgesDf.cost.median()+self.edgesDf.reverse_cost.median())/2.
+        else:
+            self.uturncost = float(uturnCost)
         self.skip_penalty = abs(temporalLL(skip_penalty))
 
         # DOK matrix (like a dictionary) of shortest paths from node1 to node2

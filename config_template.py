@@ -39,6 +39,7 @@ temporal_weight = 1.7   # how more more the temporal likelihood is weighted rela
 topol_weight = 1.7      # how more more the topological likelihood is weighted relative to the distance likelihood score
 skip_penalty = 3        # penalty for skipping a point is temporalLL(skip_penalty)
 max_skip = 4            # maximum number of points to skip. Reducing this will improve performance
+uturnCost = None        # if None, use the default (the average of the median cost and reverse cost in the edges)
 
 # column identifiers for the PostGIS table of streets
 # the default values here are compatible with osm2po

@@ -285,7 +285,7 @@ class mapMatcher():
 
         self.traceLineStr = 'ST_Transform(ST_SetSRID(ST_MakeLine(ARRAY['+', '.join([
                             'ST_MakePointM('+str(pt.longitude)+','+str(pt.latitude)+',' +
-                            str(int((pt.time - datetime.datetime(1970, 1, 1)).total_seconds()))+')'
+                            str(int((pt.time.replace(tzinfo=None) - datetime.datetime(1970, 1, 1)).total_seconds()))+')'
                             for pt in traceSegment.points])+']),4326),%s)' % self.streets_srid
         self.startEndPts = ['ST_Transform(ST_SetSRID(ST_MakePoint('+str(np.round(pt.longitude,5))+','
                             + str(np.round(pt.latitude,5))+'),4326),'+self.streets_srid+')' for pt in [traceSegment.points[0], traceSegment.points[-1]]]

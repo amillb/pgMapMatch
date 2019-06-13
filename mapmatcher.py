@@ -236,6 +236,7 @@ class mapMatcher():
         else:
             self.uturncost = float(uturnCost)
         self.skip_penalty = abs(temporalLL(skip_penalty))
+        self.allowFinalUtrn = True   # allow U-turn on last edge? see issue #12. Not fully tested
 
         # DOK matrix (like a dictionary) of shortest paths from node1 to node2
         maxN = max(edgesDf.source.max(), edgesDf.target.max()) + 1
@@ -735,6 +736,20 @@ class mapMatcher():
 
             oNode = node   # starting point for next edge
 
+        # Check whether there is a U-turn on the final edge -  issue #12
+        if self.allowFinalUtrn:
+            for nid in reversed(self.nids[1:]):  # find out where the final edge starts
+                if route[nid]!=route[nid-1]:
+                    break
+            frcsAlong = self.ptsDf[self.ptsDf.edge==route[-1][0]].loc[nid:,'frcalong']
+            threshold = 0.1 # how many km the furthest GPS ping has to be along, in order to add a uturn
+            if ((route[-1][1] == 0 and frcsAlong.max()*self.edgesDf.loc[route[-1][0],'km'] > threshold) or
+                (route[-1][1] == 1 and (1-frcsAlong.min())*self.edgesDf.loc[route[-1][0],'km'] > threshold)):  
+                fullroute.append(fullroute[-1])
+                uturnFrcs[-1] = (frcsAlong.min(), frcsAlong.max())
+                uturnFrcs.append(-1)
+
+
         self.timing['fillRouteGaps'] += (time.time()-starttime)
         assert len(uturnFrcs) == len(fullroute)
         self.bestRoute = fullroute
@@ -745,7 +760,8 @@ class mapMatcher():
         lastEdgeLength = self.edgesDf.loc[self.bestRoute[-1], 'km']
         frc = self.ptsDf.frcalong[self.ptsDf.rownum == int(d[-1]/2)].values[0]
         if d[-1] % 2 == 1: frc = 1-frc  # reverse
-        while len(self.bestRoute) > 1 and (lastEdgeLength*frc < 0.005 or self.bestRoute[-1] == self.bestRoute[-2]):
+        while (len(self.bestRoute) > 1 and 
+              (lastEdgeLength*frc < 0.005 or (self.allowFinalUtrn is False and self.bestRoute[-1] == self.bestRoute[-2]))):
             self.bestRoute = self.bestRoute[:-1]
             self.uturnFrcs = self.uturnFrcs[:-1]
             lastEdgeLength, frc = 1, 1

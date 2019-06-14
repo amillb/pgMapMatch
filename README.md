@@ -1,7 +1,7 @@
 # pgMapMatch
 map-matching of GPS traces, built using pgrouting
 
-For details of the algorithm, see Millard-Ball, Adam; Hampshire, Robert and Weinberger, Rachel, *Map-matching poor-quality GPS data in urban environments: The pgMapMatch package.* 
+For details of the algorithm, see [Millard-Ball, Adam; Hampshire, Robert and Weinberger, Rachel (2019), "Map-matching poor-quality GPS data in urban environments: The pgMapMatch package." *Transportation Planning and Technology.*](https://doi.org/10.1080/03081060.2019.1622249) (A non-paywalled pre-print is available [here](https://people.ucsc.edu/~adammb/publications.html).)
 
 For questions and feedback, please contact [Adam Millard-Ball](https://people.ucsc.edu/~adammb/).
 

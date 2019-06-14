@@ -40,6 +40,7 @@ topol_weight = 1.7      # how more more the topological likelihood is weighted r
 skip_penalty = 3        # penalty for skipping a point is temporalLL(skip_penalty)
 max_skip = 4            # maximum number of points to skip. Reducing this will improve performance
 uturnCost = None        # if None, use the default (the average of the median cost and reverse cost in the edges)
+allowFinalUturn = True  # if True, allow a U-turn on the final edge
 
 # column identifiers for the PostGIS table of streets
 # the default values here are compatible with osm2po

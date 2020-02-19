@@ -44,14 +44,8 @@ def getPgEngine(pgLogin=None):
                    per database you are connecting to
     """
     from sqlalchemy import create_engine
-    if pgLogin is not None:
-        user = pgLogin['user']
-        db = pgLogin['db']
-        host = pgLogin['host']
-        requirePassword = pgLogin['requirePassword']
-    else:
-        user, db, host = None, None, None
-    pgLogin = getPgLogin(user=user, db=db, host=host, requirePassword=requirePassword)
+    if pgLogin is None:
+        pgLogin = getPgLogin()
     thehost = '' if 'host' not in pgLogin else pgLogin['host']+':5432'
     engine = create_engine('postgresql://%s:%s@%s/%s' % (pgLogin['user'], pgLogin['pw'], thehost, pgLogin['db']))
 

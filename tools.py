@@ -47,6 +47,14 @@ def getPgEngine(pgLogin=None):
     if pgLogin is None:
         pgLogin = getPgLogin()
     thehost = '' if 'host' not in pgLogin else pgLogin['host']+':5432'
+    if 'pw' not in pgLogin:
+        if 'requirePassword' in pgLogin and pgLogin['requirePassword']:
+            import getpass
+            pw = getpass.getpass('Enter postgres password for {}: '.format((pgLogin['user'])))
+        else:
+            pw = ''
+        pgLogin.update({'pw': pw})
+
     engine = create_engine('postgresql://%s:%s@%s/%s' % (pgLogin['user'], pgLogin['pw'], thehost, pgLogin['db']))
 
     return engine

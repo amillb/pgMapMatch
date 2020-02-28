@@ -31,6 +31,7 @@ class test_mapmatch():
         self.testFiles = [fn for fn in os.listdir(execPath+'/testdata') if fn.endswith('.gpx')]
         self.mm = mm.mapMatcher(streetsTable,
                                 qualityModelFn=execPath+'/mapMatching_coefficients.txt')
+        self.mm.allowFinalUturn = False
         self.verbose = verbose
 
     def testall(self):

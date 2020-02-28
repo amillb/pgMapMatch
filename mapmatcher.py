@@ -457,7 +457,7 @@ class mapMatcher():
         self.getMatchedLineString()
 
         if self.matchedLineString is not None:
-            cmd = '''UPDATE %(traceTable)s SET %(newGeomName)s = geom FROM (%(matchedLineStr)s) q
+            cmd = '''UPDATE %(traceTable)s SET %(newGeomName)s = q.geom FROM (%(matchedLineStr)s) q
                      WHERE %(idName)s = %(traceId)s;''' % dict(self.cmdDict, **{'matchedLineStr': self.matchedLineString, 'traceId': self.traceId})
             self.db.execute(cmd)
 
@@ -491,7 +491,7 @@ class mapMatcher():
             self.matchedLineString = linestr
             return
 
-        prevNode = self.edgesDf.source[route[0]] if self.edgesDf.target[route[0]] in self.edgesDf.ix[route[1]][['source', 'target']].tolist() else self.edgesDf.target[route[0]]
+        prevNode = self.edgesDf.source[route[0]] if self.edgesDf.target[route[0]] in self.edgesDf.loc[route[1]][['source', 'target']].tolist() else self.edgesDf.target[route[0]]
         # This doesn't work - ST_LineMerge only handles a certain number of lines, it seems
         # linestr = 'UPDATE %s SET matched_line%s = merged_line FROM\n(SELECT ST_LineMerge(ST_Collect(st_geom)) AS merged_line FROM (\n'
         # Instead, we build up the string through iterating over the edges in the route
@@ -512,9 +512,9 @@ class mapMatcher():
             return linestr, prevNode
 
         for ii, edge in enumerate(route):
-            if prevNode not in self.edgesDf.ix[edge][['source', 'target']].tolist():
+            if prevNode not in self.edgesDf.loc[edge][['source', 'target']].tolist():
                 # need to repeat the last edge - an out and back situation
-                assert prevNode in self.edgesDf.ix[route[ii-1]][['source', 'target']].tolist()
+                assert prevNode in self.edgesDf.loc[route[ii-1]][['source', 'target']].tolist()
                 self.matchedLineString = None
                 return
                 linestr, prevNode = addEdge(linestr, ii-1, route[ii-1], not(reverse), ii+0.5, streetGeomCol)

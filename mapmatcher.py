@@ -296,7 +296,7 @@ class mapMatcher():
 
     def matchTrace(self):
         """New version using Viterbi"""
-        full_starttime = time.time()
+        # full_starttime = time.time() # for testing
 
         self.getPtsDf()
 
@@ -472,8 +472,8 @@ class mapMatcher():
             return
 
         if self.traceId is not None:  # get startpoint and endpoint from postgres
-            fromExtra = ', %s' % self.traceTable
-            whereExtra = ' AND %s=%s' % (self.idName, self.traceId)
+            fromExtra = ', %s t' % self.traceTable
+            whereExtra = ' AND t.%s=%s' % (self.idName, self.traceId)
         else:  # from GPX
             fromExtra, whereExtra = '', ''
 
@@ -482,12 +482,12 @@ class mapMatcher():
             cDict = dict(self.cmdDict, **{'edge': str(route[0]), 'traceId': self.traceId, 'startGeom': self.startEndPts[0], 'endGeom': self.startEndPts[1],
                                           'fromExtra': fromExtra, 'whereExtra': whereExtra})
             linestr = '''SELECT CASE WHEN stfrac = endfrac THEN Null
-                          WHEN stfrac<endfrac THEN ST_Line_SubString(%(streetGeomCol)s, stfrac, endfrac)
-                          ELSE ST_Reverse(ST_Line_SubString(%(streetGeomCol)s, endfrac, stfrac)) END AS geom
-                    FROM (SELECT ST_Line_Locate_Point(%(streetGeomCol)s, %(startGeom)s) AS stfrac,
-                                         ST_Line_Locate_Point(%(streetGeomCol)s, %(endGeom)s) AS endfrac
-                                   FROM %(streetsTable)s %(fromExtra)s WHERE %(streetIdCol)s=%(edge)s %(whereExtra)s) AS pts,
-                        %(streetsTable)s WHERE %(streetIdCol)s=%(edge)s''' % cDict
+                          WHEN stfrac<endfrac THEN ST_Line_SubString(s.%(streetGeomCol)s, stfrac, endfrac)
+                          ELSE ST_Reverse(ST_Line_SubString(s.%(streetGeomCol)s, endfrac, stfrac)) END AS geom
+                    FROM (SELECT ST_Line_Locate_Point(s1.%(streetGeomCol)s, %(startGeom)s) AS stfrac,
+                                         ST_Line_Locate_Point(s1.%(streetGeomCol)s, %(endGeom)s) AS endfrac
+                                   FROM %(streetsTable)s s1 %(fromExtra)s WHERE s1.%(streetIdCol)s=%(edge)s %(whereExtra)s) AS pts,
+                        %(streetsTable)s s WHERE s.%(streetIdCol)s=%(edge)s''' % cDict
             self.matchedLineString = linestr
             return
 
@@ -508,7 +508,7 @@ class mapMatcher():
             else:
                 geomStr = '%s' % geomField if routeFrcs in [None, (0, 1)] else 'ST_LineSubstring(%s,%s,%s)' % (geomField, routeFrcs[0], routeFrcs[1])
                 prevNode = self.edgesDf.target[edge]
-            linestr += '\t\t\t\tSELECT %s AS lorder, %s AS st_geom FROM %s%s %s = %s UNION ALL\n' % (str(lineindex), geomStr, self.streetsTable, extra, streetIdCol, str(edge))
+            linestr += '\t\t\t\tSELECT %s AS lorder, %s AS st_geom FROM %s s%s s.%s = %s UNION ALL\n' % (str(lineindex), geomStr, self.streetsTable, extra, self.cmdDict['streetIdCol'], str(edge))
             return linestr, prevNode
 
         for ii, edge in enumerate(route):
@@ -517,23 +517,23 @@ class mapMatcher():
                 assert prevNode in self.edgesDf.loc[route[ii-1]][['source', 'target']].tolist()
                 self.matchedLineString = None
                 return
-                linestr, prevNode = addEdge(linestr, ii-1, route[ii-1], not(reverse), ii+0.5, streetGeomCol)
+                linestr, prevNode = addEdge(linestr, ii-1, route[ii-1], not(reverse), 0, ii+0.5, streetGeomCol)
                 stophere
             reverse = True if prevNode == self.edgesDf.target[edge] else False
             if ii == 0:  # first point - don't need whole edge
                 if reverse:
-                    geomField = 'ST_LineSubString(%(streetGeomCol)s, 0, ST_LineLocatePoint(%(streetGeomCol)s, %(startGeom)s))' % dict(self.cmdDict, **{'startGeom': self.startEndPts[0]})
+                    geomField = 'ST_LineSubString(s.%(streetGeomCol)s, 0, ST_LineLocatePoint(s.%(streetGeomCol)s, %(startGeom)s))' % dict(self.cmdDict, **{'startGeom': self.startEndPts[0]})
                 else:
-                    geomField = 'ST_LineSubString(%(streetGeomCol)s, ST_LineLocatePoint(%(streetGeomCol)s, %(startGeom)s), 1)' % dict(self.cmdDict, **{'startGeom': self.startEndPts[0]})
+                    geomField = 'ST_LineSubString(s.%(streetGeomCol)s, ST_LineLocatePoint(s.%(streetGeomCol)s, %(startGeom)s), 1)' % dict(self.cmdDict, **{'startGeom': self.startEndPts[0]})
                 routeFrcs = None
-                extra = ', %s WHERE %s=%s AND' % (self.traceTable, self.idName, self.traceId) if self.traceId is not None else ' WHERE '
+                extra = ', %s t WHERE t.%s=%s AND' % (self.traceTable, self.idName, self.traceId) if self.traceId is not None else ' WHERE '
             elif ii == len(route)-1:  # last point
                 if reverse:
-                    geomField = 'ST_LineSubString(%(streetGeomCol)s, ST_LineLocatePoint(%(streetGeomCol)s, %(endGeom)s), 1)' % dict(self.cmdDict, **{'endGeom': self.startEndPts[1]})
+                    geomField = 'ST_LineSubString(s.%(streetGeomCol)s, ST_LineLocatePoint(s.%(streetGeomCol)s, %(endGeom)s), 1)' % dict(self.cmdDict, **{'endGeom': self.startEndPts[1]})
                 else:
-                    geomField = 'ST_LineSubString(%(streetGeomCol)s, 0, ST_LineLocatePoint(%(streetGeomCol)s, %(endGeom)s))' % dict(self.cmdDict, **{'endGeom': self.startEndPts[1]})
+                    geomField = 'ST_LineSubString(s.%(streetGeomCol)s, 0, ST_LineLocatePoint(s.%(streetGeomCol)s, %(endGeom)s))' % dict(self.cmdDict, **{'endGeom': self.startEndPts[1]})
                 routeFrcs = None
-                extra = ', %s WHERE %s=%s AND' % (self.traceTable, self.idName, self.traceId) if self.traceId is not None else ' WHERE '
+                extra = ', %s t WHERE t.%s=%s AND' % (self.traceTable, self.idName, self.traceId) if self.traceId is not None else ' WHERE '
             else:
                 geomField, extra = streetGeomCol, None
                 if edge == route[ii+1] and edge != route[ii-1] and (ii+2 == len(route) or edge != route[ii+2]):  # first edge in uTurn, but not if we have a triple

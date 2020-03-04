@@ -148,7 +148,7 @@ class traceCleaner():
 
 
 class mapMatcher():
-    def __init__(self, streetsTable, traceTable=None, idName=None, geomName=None, newGeomName='matched_line', cleanedGeomName=None, qualityModelFn='mapMatching_coefficients.txt', db=None):
+    def __init__(self, streetsTable, traceTable=None, idName=None, geomName=None, newGeomName='matched_line', cleanedGeomName=None, qualityModelFn='mapmatching_coefficients.txt', db=None):
         """Creates a mapMatcher object that loads the streets (edges) table
         and can then be called to match a trace
 
@@ -570,26 +570,31 @@ class mapMatcher():
         cmd = cmd.replace('OLDGEOM', self.geomName)
         self.db.execute(cmd)
 
-    def getMatchScore(self):
+    def getMatchScore(self, verbose=False):
         """Calculates the match score for the current trace"""
 
         if self.bestRoute is None: return None
         if self.qualityModelCoeffs is None: self.loadQualityModel()
-
+        if verbose:
+            print('Coefficients: {}'.format(self.qualityModelCoeffs))
         xb = self.qualityModelCoeffs['intercept']
         if 'frechet_dist' in self.qualityModelCoeffs:
             xb += self.qualityModelCoeffs['frechet_dist']*self.frechet()
+            if verbose: print('Frechet: {}'.format(self.frechet()))
         for ii, llName in enumerate(['ll_dist_mean', 'll_dist_min', 'll_topol_mean', 'll_topol_min', 'll_distratio_mean', 'll_distratio_min']):
             if llName in self.qualityModelCoeffs:
                 xb += self.qualityModelCoeffs[llName]*self.LL[ii]
+            if verbose: print(llName+': '+self.LL[ii])
         if 'gpsMatchRatio' in self.qualityModelCoeffs or 'matchGpsRatio' in self.qualityModelCoeffs:
             geomToUse = self.geomName if self.cleanedGeomName is None else self.cleanedGeomName
             gpslength, matchlength = self.db.execfetch('''SELECT ST_Length(%(geomToUse)s), ST_Length(%(newGeomName)s
                                                              FROM %(traceTable)s WHERE trip_id=%(id)s;''' % dict(self.cmdDict, **{'geomToUse': geomToUse, 'id': self.traceId}))
             if 'gpsMatchRatio' in self.qualityModelCoeffs:
                 xb += self.qualityModelCoeffs['gpsMatchRatio']*1.*matchlength/gpslength
+                if verbose: print('gpsMatchRatio: {}'.format(1.*matchlength/gpslength))
             if 'matchGpsRatio' in self.qualityModelCoeffs:
                 xb += self.qualityModelCoeffs['matchGpsRatio']*1.*gpslength/matchlength
+                if verbose: print('matchGpsRatio: {}'.format(1.*gpslength/matchlength))
 
         return 1./(1+math.exp(-1*max(xb, -500)))  # max is to avoid overflow error
 

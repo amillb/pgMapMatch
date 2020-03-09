@@ -15,13 +15,15 @@ import os
 import pandas as pd
 import numpy as np
 from scipy import stats, sparse
-import tools as mmt
+
+# pgMapMatch tools
+from . import tools as mmt
 
 try:
-    from config import *
+    from .config import *
 except ModuleNotFoundError:
     raise Warning('config.py not found. Using config_template.py instead')
-    from config_template import *
+    from .config_template import *
 
 
 class traceCleaner():
@@ -438,7 +440,11 @@ class mapMatcher():
         if writeEdgeIds or writeMatchScore or writeLLs:
             cmd = '''UPDATE %(traceTable)s SET ''' % cDict
             if writeEdgeIds:    cmd += '''%(edgeIdCol)s = ARRAY%(edges)s,''' % cDict
-            if writeMatchScore and not np.isnan(match_score): cmd += 'match_score=%s,' % np.float32(match_score)   # float32 needed to avoid underflow with very low scores
+            if writeMatchScore:
+                if np.isnan(match_score): 
+                    cmd += 'match_score=Null,'
+                else:
+                    cmd += 'match_score=%s,' % np.float32(match_score)   # float32 needed to avoid underflow with very low scores
             if writeLLs: cmd += '''ll_dist_mean=%(ll_dist_mean)s, ll_dist_min=%(ll_dist_min)s,
                                    ll_topol_mean=%(ll_topol_mean)s, ll_topol_min=%(ll_topol_min)s,
                                    ll_distratio_mean=%(ll_distratio_mean)s, ll_distratio_min=%(ll_distratio_min)s,''' % cDict
@@ -584,7 +590,7 @@ class mapMatcher():
         for ii, llName in enumerate(['ll_dist_mean', 'll_dist_min', 'll_topol_mean', 'll_topol_min', 'll_distratio_mean', 'll_distratio_min']):
             if llName in self.qualityModelCoeffs:
                 xb += self.qualityModelCoeffs[llName]*self.LL[ii]
-            if verbose: print(llName+': '+self.LL[ii])
+            if verbose: print(llName+': '+str(self.LL[ii]))
         if 'gpsMatchRatio' in self.qualityModelCoeffs or 'matchGpsRatio' in self.qualityModelCoeffs:
             geomToUse = self.geomName if self.cleanedGeomName is None else self.cleanedGeomName
             gpslength, matchlength = self.db.execfetch('''SELECT ST_Length(%(geomToUse)s), ST_Length(%(newGeomName)s
@@ -1012,7 +1018,9 @@ class mapMatcher():
         cmd += ' FROM l'
         try:
             pts = [rr.strip('POINT()').split() for rr in self.db.execfetch(cmd)[0]]
-        except:  # 'AttributeError if matched_line is None
+        except Exception as e:  # 'AttributeError if matched_line is None
+            print(e.message)
+            print(cmd)
             return np.nan
         l1 = np.array([[float(ll[0]), float(ll[1])] for ii, ll in enumerate(pts) if ii % 2 == 0])
         l2 = np.array([[float(ll[0]), float(ll[1])] for ii, ll in enumerate(pts) if ii % 2 == 1])

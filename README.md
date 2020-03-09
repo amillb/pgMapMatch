@@ -10,7 +10,7 @@ For questions and feedback, please contact [Adam Millard-Ball](https://people.uc
 
 2. You will need to load a table of street edges into a PostgreSQL database. The easiest way to do this is:
   * Download an extract from [OpenStreetMap](http://www.openstreetmap.org/), such as those produced for metropolitan areas by [Mapzen](https://mapzen.com/data/metro-extracts/).
-  * Use [osm2po](http://osm2po.de) to load the OpenStreetMap data into PostgreSQL.
+  * Use [osm2po](http://osm2po.de) to load the OpenStreetMap data into PostgreSQL. You can use another OSM import tool, but you will need to make sure your street column names match those that are in `config.py` (see Step 3 below).
   * Transform the street geometries to a suitable projection, for example: 
 
      `ALTER TABLE streets_table ALTER COLUMN geom_way TYPE Geometry(LineString, your_srid) USING ST_Transform(geom_way, your_srid);` 
@@ -22,14 +22,28 @@ You can match traces from GPX files (a `time` field must be included), or a Post
 
 You can call pgMapMatch from the command line. You can match either a GPX file, or a table of GPS traces loaded into PostgreSQL. `python pgMapMatch --help` gives you a list of options. 
 
+For example, to match a GPX file:
+```
+python pgMapMatch gpx pgMapMatch/testdata/testtrace_36.gpx --streets=sf_streets
+```
+
+For example, to match a table of GPS traces (called `gps_trace_table`), and write the matched geometries and match score:
+```
+python pgMapMatch pg gps_trace_table trace_id trace_geom --streets=sf_streets --write_geom --write_score
+```
+
+For a large number of traces, the second option will be much more efficient.
+
 You can also import pgMapMatch into Python, and use the class `mapMatcher()`. After you call `matchGPXTrace()` or `matchPostgresTrace()`, you can access the sequence of edges, matched geometry and match score, and write them to Postgres. For example:
 ```
 import pgMapMatch
-mm = pgMapMatch.mapMatcher('streetsTable')
-mm.matchGPXTrace(gpx_filename)
-mm.bestRoute        # returns the sequence of edge ids (based on the id column in the streets table)
-mm.getMatchAsWKT()  # returns the matched geometry as Well-Known Text
-mm.getMatchScore()  # returns the match score (probability that the match is good)
+your_streets_table = 'sf_streets'   # the name of your Postgres table with streets
+mm = pgMapMatch.mapMatcher(your_streets_table)
+your_gpx_filename = 'pgMapMatch/testdata/testtrace_36.gpx'
+mm.matchGPXTrace(your_gpx_filename)
+print(mm.bestRoute)        # returns the sequence of edge ids (based on the id column in the streets table)
+print(mm.getMatchAsWKT())  # returns the matched geometry as Well-Known Text
+print(mm.getMatchScore())  # returns the match score (probability that the match is good)
 ```
 
 ## Dependencies ##

@@ -665,7 +665,7 @@ class mapMatcher():
             for nodesToDo_src in nodesToDoList:
                 for nodesToDo_tgt in nodesToDoList:
                     if nodesToDo_src and nodesToDo_tgt:
-                        cmd = '''SELECT start_vid, end_vid, sum(pgr.cost) AS pgrcost, sum(s.km) AS length_km
+                        cmd = '''SELECT start_vid, end_vid, sum(pgr.cost) AS pgrcost, sum(s.%(km)s::real) AS length_km
                               FROM %(streetsTable)s s,
                                    pgr_dijkstra('SELECT %(streetIdCol)s, %(source)s, %(target)s, %(cost)s, %(reverse_cost)s FROM %(streetsTable)s',
                                                  ARRAY%(srcnodes)s, ARRAY%(tgtnodes)s, True) AS pgr

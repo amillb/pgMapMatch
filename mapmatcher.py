@@ -1031,8 +1031,8 @@ class mapMatcher():
             try:
                 pts = [rr.strip('POINT()').split() for rr in self.db.execfetch(cmd)[0]]
             except Exception as e:  # 'AttributeError if matched_line is None
-                #print(e)
-                #print(cmd)
+                print(e)
+                print(cmd)
                 return np.nan
             l1 = np.array([[float(ll[0]), float(ll[1])] for ii, ll in enumerate(pts) if ii % 2 == 0])
             l2 = np.array([[float(ll[0]), float(ll[1])] for ii, ll in enumerate(pts) if ii % 2 == 1])

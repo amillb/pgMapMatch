@@ -167,10 +167,10 @@ class mapMatcher():
         if db is None:
             db = mmt.dbConnection(pgLogin=pgInfo)
         self.db = db
-        self.pgr_version = self.db.execfetch('SELECT pgr_version()')[0][0].strip('()').split(',')[0]
+        self.pgr_version = self.db.execfetch('SELECT pgr_version();')[0][0].strip('()').split(',')[0]
         if float(self.pgr_version.split('.')[0]) < 2 or float(self.pgr_version.split('.')[0]) == 2 and float(self.pgr_version.split('.')[1]) < 3:
             raise Exception('pgRouting v2.3.0 or greater required to use pgr_dijkstraCostMatrix')
-
+        self.postgis_version = self.db.execfetch('SELECT PostGIS_lib_version();')[0][0]
         self.streetsTable = streetsTable
         self.traceTable = traceTable
         self.idName = idName  #
@@ -225,6 +225,9 @@ class mapMatcher():
         cmd = '''SELECT %(streetIdCol)s, %(source)s::integer, %(target)s::integer, %(cost)s::real, %(reverse_cost)s::real, %(km)s::real,
                %(kmh)s::real %(fwayCols)s FROM %(streetsTable)s''' % self.cmdDict
         edgesDf = pd.DataFrame(self.db.execfetch(cmd), columns=['edge', 'source', 'target', 'cost', 'reverse_cost', 'km', 'kmh']+fwayColList).set_index('edge')
+
+        # ratio of projected units to meters (will be calculated if needed for Frechet distance )
+        self.projectionRatio = None
 
         # overwrite cost if speed limit is low (so likely to be exceeded)
         mask = (edgesDf.cost < 1000000) & (edgesDf.kmh < 15)
@@ -377,7 +380,7 @@ class mapMatcher():
         fwayQueryTxt = '' if fwayQuery.strip() == '' else '('+fwayQuery+') AND '
 
         assert self.traceId is not None or self.traceLineStr is not None
-        if self.traceId:  # get trace from postgres
+        if self.traceId is not None:  # get trace from postgres
             dpStr = 'SELECT ST_DumpPoints(%(geomName)s) AS dp FROM %(traceTable)s WHERE %(idName)s=%(traceId)s' % dict(self.cmdDict, **{'traceId': self.traceId})
         else:   # trace was a GPX file
             dpStr = 'SELECT ST_DumpPoints(%s) AS dp' % self.traceLineStr
@@ -488,10 +491,10 @@ class mapMatcher():
             cDict = dict(self.cmdDict, **{'edge': str(route[0]), 'traceId': self.traceId, 'startGeom': self.startEndPts[0], 'endGeom': self.startEndPts[1],
                                           'fromExtra': fromExtra, 'whereExtra': whereExtra})
             linestr = '''SELECT CASE WHEN stfrac = endfrac THEN Null
-                          WHEN stfrac<endfrac THEN ST_Line_SubString(s.%(streetGeomCol)s, stfrac, endfrac)
-                          ELSE ST_Reverse(ST_Line_SubString(s.%(streetGeomCol)s, endfrac, stfrac)) END AS geom
-                    FROM (SELECT ST_Line_Locate_Point(s1.%(streetGeomCol)s, %(startGeom)s) AS stfrac,
-                                         ST_Line_Locate_Point(s1.%(streetGeomCol)s, %(endGeom)s) AS endfrac
+                          WHEN stfrac<endfrac THEN ST_LineSubstring(s.%(streetGeomCol)s, stfrac, endfrac)
+                          ELSE ST_Reverse(ST_LineSubstring(s.%(streetGeomCol)s, endfrac, stfrac)) END AS geom
+                    FROM (SELECT ST_LineLocatePoint(s1.%(streetGeomCol)s, %(startGeom)s) AS stfrac,
+                                         ST_LineLocatePoint(s1.%(streetGeomCol)s, %(endGeom)s) AS endfrac
                                    FROM %(streetsTable)s s1 %(fromExtra)s WHERE s1.%(streetIdCol)s=%(edge)s %(whereExtra)s) AS pts,
                         %(streetsTable)s s WHERE s.%(streetIdCol)s=%(edge)s''' % cDict
             self.matchedLineString = linestr
@@ -584,8 +587,13 @@ class mapMatcher():
         if verbose:
             print('Coefficients: {}'.format(self.qualityModelCoeffs))
         xb = self.qualityModelCoeffs['intercept']
-        if 'frechet_dist' in self.qualityModelCoeffs:
-            xb += self.qualityModelCoeffs['frechet_dist']*self.frechet()
+        if 'frechet_dist' in self.qualityModelCoeffs :
+            if self.projectionRatio is None:        # get ratio of projected units to meters (to be able to use Frechet distance)
+                cmd = '''SELECT AVG(ST_Length(%(streetGeomCol)s) / st_length(ST_Transform(%(streetGeomCol)s, 4326)::geography)) 
+                            FROM %(streetsTable)s WHERE ST_Length(%(streetGeomCol)s)>0 LIMIT 1000;''' % self.cmdDict
+                self.projectionRatio = self.db.execfetch(cmd)[0][0]
+                print('Using projection ratio (map units to meters) of {:.3f}'.format(self.projectionRatio ))
+            xb += self.qualityModelCoeffs['frechet_dist']*self.frechet()*self.projectionRatio
             if verbose: print('Frechet: {}'.format(self.frechet()))
         for ii, llName in enumerate(['ll_dist_mean', 'll_dist_min', 'll_topol_mean', 'll_topol_min', 'll_distratio_mean', 'll_distratio_min']):
             if llName in self.qualityModelCoeffs:
@@ -863,8 +871,7 @@ class mapMatcher():
             self.db.execute('UPDATE %(traceTable)s SET matchdist = ST_Length(%(newGeomName)s);' % self.cmdDict)
 
         if columns is None or 'frechet_dist' in columns:
-            # This is placeholder pending ST_FrechetDistance() in PostGIS 2.4.0
-            ids = sorted([ii[0] for ii in self.db.execfetch('SELECT %(idName)s FROM %(traceTable)s WHERE %(newGeomName)s IS NOT NULL' % self.cmdDict)])
+            ids = sorted([ii[0] for ii in self.db.execfetch('SELECT %(idName)s FROM %(traceTable)s WHERE %(newGeomName)s IS NOT NULL;' % self.cmdDict)])
             for id in ids:
                 self.traceId = id
                 fd = self.frechet()
@@ -997,35 +1004,52 @@ class mapMatcher():
 
     def frechet(self, resolution=20):
         """Returns Frechet distance between match and the GPS trace
-        Note that the GPX variant does not consider the cleaned line (yet)"""
+        Note that the GPX variant does not consider the cleaned line (yet)
+        """
 
         assert self.traceId is not None or self.traceLineStr is not None
 
-        if self.traceId:
-            frechetGeomName = self.cleanedGeomName if self.cleanedGeomName else self.geomName
-            traceLength = self.db.execfetch('SELECT ST_Length(%(frechetGeomName)s) FROM %(traceTable)s WHERE %(idName)s=%(traceId)s;' % dict(self.cmdDict, **{'traceId': self.traceId, 'frechetGeomName': frechetGeomName}))[0][0]
-            cmd = '''WITH l AS (SELECT ST_Force2D(%(newGeomName)s) as l1,
-                                       ST_Force2D(%(frechetGeomName)s) as l2
-                                 FROM %(traceTable)s where %(idName)s=%(traceId)s)''' % dict(self.cmdDict, **{'traceId': self.traceId, 'frechetGeomName': frechetGeomName})
-        else:
-            if self.matchedLineString is None: self.getMatchedLineString()
-            traceLength = self.db.execfetch('SELECT ST_Length(%s)' % self.traceLineStr)[0][0]
-            cmd = '''WITH l AS (SELECT ST_Force2D(geom) as l1, ST_Force2D(%s) AS l2 FROM (%s) mls)''' % (self.traceLineStr, self.matchedLineString)
+        # PostGIS now has a Frechet function. But this seems much slower than the implementation here, so don't use it
 
-        frc = max(0.0025, resolution*1./traceLength)  # max is because of limit of target lists can have at most 1664 entries
+        if 1 or float(self.postgis_version.split('.')[0]) < 3 and float(self.postgis_version.split('.')[1]) < 4:
+                # This is placeholder pending ST_FrechetDistance() in PostGIS 2.4.0
+            if self.traceId is not None:
+                frechetGeomName = self.cleanedGeomName if self.cleanedGeomName else self.geomName
+                traceLength = self.db.execfetch('SELECT ST_Length(%(frechetGeomName)s) FROM %(traceTable)s WHERE %(idName)s=%(traceId)s;' % dict(self.cmdDict, **{'traceId': self.traceId, 'frechetGeomName': frechetGeomName}))[0][0]
+                cmd = '''WITH l AS (SELECT ST_Force2D(%(newGeomName)s) as l1,
+                                        ST_Force2D(%(frechetGeomName)s) as l2
+                                    FROM %(traceTable)s where %(idName)s=%(traceId)s)''' % dict(self.cmdDict, **{'traceId': self.traceId, 'frechetGeomName': frechetGeomName})
+            else:
+                if self.matchedLineString is None: self.getMatchedLineString()
+                traceLength = self.db.execfetch('SELECT ST_Length(%s)' % self.traceLineStr)[0][0]
+                cmd = '''WITH l AS (SELECT ST_Force2D(geom) as l1, ST_Force2D(%s) AS l2 FROM (%s) mls)''' % (self.traceLineStr, self.matchedLineString)
 
-        cmd += '\nSELECT '+','.join([' ST_AsText(ST_LineInterpolatePoint(l1,'+str(f)+')), ST_AsText(ST_LineInterpolatePoint(l2,'+str(f)+'))' for f in np.arange(0, 1, frc)])
-        cmd += ' FROM l'
-        try:
-            pts = [rr.strip('POINT()').split() for rr in self.db.execfetch(cmd)[0]]
-        except Exception as e:  # 'AttributeError if matched_line is None
-            print(e.message)
-            print(cmd)
-            return np.nan
-        l1 = np.array([[float(ll[0]), float(ll[1])] for ii, ll in enumerate(pts) if ii % 2 == 0])
-        l2 = np.array([[float(ll[0]), float(ll[1])] for ii, ll in enumerate(pts) if ii % 2 == 1])
-        return mmt.frechetDist(l1, l2)
+            frc = max(0.0025, resolution*1./traceLength)  # max is because of limit of target lists can have at most 1664 entries
 
+            cmd += '\nSELECT '+','.join([' ST_AsText(ST_LineInterpolatePoint(l1,'+str(f)+')), ST_AsText(ST_LineInterpolatePoint(l2,'+str(f)+'))' for f in np.arange(0, 1, frc)])
+            cmd += ' FROM l'
+            try:
+                pts = [rr.strip('POINT()').split() for rr in self.db.execfetch(cmd)[0]]
+            except Exception as e:  # 'AttributeError if matched_line is None
+                #print(e)
+                #print(cmd)
+                return np.nan
+            l1 = np.array([[float(ll[0]), float(ll[1])] for ii, ll in enumerate(pts) if ii % 2 == 0])
+            l2 = np.array([[float(ll[0]), float(ll[1])] for ii, ll in enumerate(pts) if ii % 2 == 1])
+            frechet_dist = mmt.frechetDist(l1, l2)
+
+        else: # use new PostGIS function
+            if self.traceId:
+                frechetGeomName = self.cleanedGeomName if self.cleanedGeomName else self.geomName
+                frechet_dist = self.db.execfetch('''SELECT ST_FrechetDistance(%(newGeomName)s, %(frechetGeomName)s, 0.05) 
+                                                        FROM %(traceTable)s WHERE %(idName)s=%(traceId)s;''' % dict(self.cmdDict, **{'traceId': self.traceId, 'frechetGeomName': frechetGeomName}))[0][0]
+            else:
+                if self.matchedLineString is None: self.getMatchedLineString()
+                cmd = '''WITH l AS (SELECT ST_Force2D(geom) as l1, ST_Force2D(%s) AS l2 FROM (%s) mls)
+                            SELECT ST_FrechetDistance(l1, l2, 0.01) FROM l;''' % (self.traceLineStr, self.matchedLineString)
+                frechet_dist = self.db.execfetch(cmd)[0][0]
+
+        return frechet_dist
 
 def distanceLL(distance):
     """Geometric log likelihood function for how to penalize edges that are further from the point

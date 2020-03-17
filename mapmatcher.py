@@ -1024,6 +1024,7 @@ class mapMatcher():
                 traceLength = self.db.execfetch('SELECT ST_Length(%s)' % self.traceLineStr)[0][0]
                 cmd = '''WITH l AS (SELECT ST_Force2D(geom) as l1, ST_Force2D(%s) AS l2 FROM (%s) mls)''' % (self.traceLineStr, self.matchedLineString)
 
+            if traceLength == 0: return np.nan
             frc = max(0.0025, resolution*1./traceLength)  # max is because of limit of target lists can have at most 1664 entries
 
             cmd += '\nSELECT '+','.join([' ST_AsText(ST_LineInterpolatePoint(l1,'+str(f)+')), ST_AsText(ST_LineInterpolatePoint(l2,'+str(f)+'))' for f in np.arange(0, 1, frc)])

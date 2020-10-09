@@ -6,6 +6,7 @@ Adapted from postgres_tools.py by Chris Barrington-Leigh and Adam Millard-Ball
 """
 import os
 import math
+import re
 import six
 import psycopg2
 import psycopg2.extras
@@ -81,6 +82,8 @@ class dbConnection():
         if schema is None:
             schema = 'public'
         self.default_schema = schema
+        self.verbose = verbose
+        self.logger = logger
         # Connect to database
         coninfo = ' '.join([{'db': 'dbname', 'pw': 'password'}.get(key, key)+' = '+val
                            for key, val in self.pgLogin.items()])
@@ -95,8 +98,6 @@ class dbConnection():
             # ensures that new tables are owned by the group
             self.execute('''SET role %s;''' % role)
         assert not self.cursor.closed
-        self.verbose = verbose
-        self.logger = logger
 
     def cur(self):
         """ Create a new cursor. This can be done frequently.
@@ -119,6 +120,7 @@ class dbConnection():
     def execute(self, cmd):
         if self.cursor is None:
             self.cur()
+        self.report(re.sub(r'\s+',' ',cmd.replace('\n',r' \n ')))
         return self.cursor.execute(cmd)
 
     def fetchall(self):

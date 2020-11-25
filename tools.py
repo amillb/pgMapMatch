@@ -93,7 +93,7 @@ class dbConnection():
         self.connection = con
         search_path = [self.default_schema]+['public']
         self.execute('SET search_path = '+','.join(search_path))
-        print('SET search_path = '+','.join(search_path))
+        if verbose: print('SET search_path = '+','.join(search_path))
         if role is not None:
             # ensures that new tables are owned by the group
             self.execute('''SET role %s;''' % role)

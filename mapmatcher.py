@@ -150,7 +150,7 @@ class traceCleaner():
 
 
 class mapMatcher():
-    def __init__(self, streetsTable, traceTable=None, idName=None, geomName=None, newGeomName='matched_line', cleanedGeomName=None, qualityModelFn='mapmatching_coefficients.txt', db=None):
+    def __init__(self, streetsTable, traceTable=None, idName=None, geomName=None, newGeomName='matched_line', cleanedGeomName=None, qualityModelFn='mapmatching_coefficients.txt', db=None, verbose=True):
         """Creates a mapMatcher object that loads the streets (edges) table
         and can then be called to match a trace
 
@@ -162,10 +162,11 @@ class mapMatcher():
         cleanedGeomName: Column name in traceTable of the geometry column to write the cleaned geometry (i.e., geomName minus dropped points)
         qualityModelFn:  File name with the logit model coefficients (needed to write the match score)
         db:              postgres database connection object (optional - will be created using the config information if left as None
+        verbose:         Echo postgres queries to stdout
         """
 
         if db is None:
-            db = mmt.dbConnection(pgLogin=pgInfo)
+            db = mmt.dbConnection(pgLogin=pgInfo, verbose=verbose)
         self.db = db
         self.pgr_version = self.db.execfetch('SELECT pgr_version();')[0][0].strip('()').split(',')[0]
         if float(self.pgr_version.split('.')[0]) < 2 or float(self.pgr_version.split('.')[0]) == 2 and float(self.pgr_version.split('.')[1]) < 3:
@@ -173,6 +174,7 @@ class mapMatcher():
         self.postgis_version = self.db.execfetch('SELECT PostGIS_lib_version();')[0][0]
         self.streetsTable = streetsTable
         self.traceTable = traceTable
+        self.verbose = verbose
         self.idName = idName  #
         self.geomName = geomName  # for trace
         self.newGeomName = newGeomName
@@ -592,7 +594,7 @@ class mapMatcher():
                 cmd = '''SELECT AVG(ST_Length(%(streetGeomCol)s) / st_length(ST_Transform(%(streetGeomCol)s, 4326)::geography)) 
                             FROM %(streetsTable)s WHERE ST_Length(%(streetGeomCol)s)>0 LIMIT 1000;''' % self.cmdDict
                 self.projectionRatio = self.db.execfetch(cmd)[0][0]
-                print('Using projection ratio (map units to meters) of {:.3f}'.format(self.projectionRatio ))
+                if self.verbose: print('Using projection ratio (map units to meters) of {:.3f}'.format(self.projectionRatio ))
             xb += self.qualityModelCoeffs['frechet_dist']*self.frechet()*self.projectionRatio
             if verbose: print('Frechet: {}'.format(self.frechet()))
         for ii, llName in enumerate(['ll_dist_mean', 'll_dist_min', 'll_topol_mean', 'll_topol_min', 'll_distratio_mean', 'll_distratio_min']):

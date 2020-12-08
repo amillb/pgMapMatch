@@ -436,7 +436,7 @@ class mapMatcher():
         if writeGeom: self.writeGeomToPostgres()  # needed for writeMatchScore, so do this first
 
         cDict = dict(self.cmdDict, **{'edgeIdCol': edgeIdCol,
-                                      'edges': str(self.bestRoute), 'traceId': self.traceId,
+                                      'edges': '['+','.join([str(rr) for rr in self.bestRoute])+']', 'traceId': self.traceId,
                                       'll_dist_mean': self.LL[0], 'll_dist_min': self.LL[1],
                                       'll_topol_mean': self.LL[2], 'll_topol_min': self.LL[3],
                                       'll_distratio_mean': self.LL[4], 'll_distratio_min': self.LL[5]})

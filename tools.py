@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 
 
-def getPgLogin(user=None, db=None, host=None, requirePassword=False, forceUpdate=False):
+def getPgLogin(user=None, db=None, host=None, requirePassword=False, schema='public', forceUpdate=False):
     """
     Returns dictionary of credentials to login to postgres
     To change access permissions (e.g. where someone can login from),
@@ -28,12 +28,15 @@ def getPgLogin(user=None, db=None, host=None, requirePassword=False, forceUpdate
     db = six.moves.input('Database name:') if db is None else db
     host = 'localhost' if host is None else host
 
-    pgLogin = {'user': user, 'db': db, 'host': host, 'pw': ''}
+    pgLogin = {'user': user, 'db': db, 'host': host, 'pw': '', 
+               'requirePassword':requirePassword, 'gotPassword':False,
+               'schema':schema}
 
     if requirePassword:
         import getpass
         pw = getpass.getpass('Enter postgres password for %s: ' % user)
         pgLogin.update({'pw': pw})
+        pgLogin.update({'gotPassword': True})
 
     return pgLogin
 
@@ -70,23 +73,23 @@ class dbConnection():
         If role is not None, new tables will be owned by this role
             (rather than user)
         """
-        if pgLogin is not None:
-            user = pgLogin['user']
-            db = pgLogin['db']
-            host = pgLogin['host']
-            schema = pgLogin['schema']
-            requirePassword = pgLogin['requirePassword']
-        self.pgLogin = getPgLogin(user=user, db=db, host=host, requirePassword=requirePassword)
+        if pgLogin is not None and (('requirePassword' in pgLogin and not pgLogin['requirePassword']) or ('gotPassword' in pgLogin and pgLogin['gotPassword'])):
+            self.pgLogin = pgLogin
+        else:
+            if pgLogin is not None:
+                self.pgLogin = getPgLogin(**pgLogin)
+            else:
+                self.pgLogin = getPgLogin(user=user, db=db, host=host, schema=schema, requirePassword=requirePassword)
         assert curType in ['DictCursor', 'default']
         self.curType = curType
         if schema is None:
-            schema = 'public'
+            schema = pgLogin['schema'] if 'schema' in pgLogin else 'public'
         self.default_schema = schema
         self.verbose = verbose
         self.logger = logger
         # Connect to database
         coninfo = ' '.join([{'db': 'dbname', 'pw': 'password'}.get(key, key)+' = '+val
-                           for key, val in self.pgLogin.items()])
+                           for key, val in self.pgLogin.items() if key not in ['requirePassword', 'gotPassword', 'schema']])
         con = psycopg2.connect(coninfo)
         con.set_isolation_level(0)   # autocommit - see http://stackoverflow.com/questions/1219326/how-do-i-do-database-transactions-with-psycopg2-python-db-api
         self.cursor = None

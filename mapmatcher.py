@@ -1242,7 +1242,7 @@ class qualityPredictor():
         engine = mmt.getPgEngine(pgLogin=pgInfo)
 
         df.pr_good.to_sql('tmpimport', engine, if_exists='replace')
-        self.db.fix_permissions_of_new_table('tmpimport')
+        self.db.fix_permissions_of_new_table('tmpimport') 
         print('Merging and cleaning up')
         self.db.execute('ALTER TABLE %s DROP COLUMN IF EXISTS pr_good;' % table)
         self.db.execute('ALTER TABLE %s ADD COLUMN pr_good real;' % table)

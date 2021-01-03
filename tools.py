@@ -66,7 +66,7 @@ def getPgEngine(pgLogin=None):
 
 class dbConnection():
     def __init__(self, user=None, db=None, host=None, requirePassword=True,
-                 pgLogin=None, schema=None, role=None, curType='default',
+                 pgLogin=None, schema=None, role=None, groupRole=None, curType='default',
                  verbose=True, logger=None):
         """
         This returns a connection to the database.
@@ -87,6 +87,9 @@ class dbConnection():
         self.default_schema = schema
         self.verbose = verbose
         self.logger = logger
+
+        self.groupRole = groupRole      # if not None, will change permissions of new table to the group 
+
         # Connect to database
         coninfo = ' '.join([{'db': 'dbname', 'pw': 'password'}.get(key, key)+' = '+val
                            for key, val in self.pgLogin.items() if key not in ['requirePassword', 'gotPassword', 'schema']])
@@ -173,8 +176,9 @@ class dbConnection():
         This cannot be done from the cursor without changing the role, so it's easier to do it from a separate psql call.
         """
         # We could do this with self.cursor, too;
-        # but we'd have to change the role back to a person from osmusers.
-        os.system('psql -c "ALTER TABLE '+tablename+' OWNER to parkingusers" %s ' % (self.psql_command_line_flags()))
+        # but we'd have to change the role back to a person from osmusers
+        if self.groupRole is not None:
+            os.system('psql -c "ALTER TABLE {} OWNER to {};" %s '.format(tablename, self.groupRole, self.psql_command_line_flags()))
 
     def psql_command_line_flags(self):
         """ Return a string to be used in a psql command line to identify host, user, and database.

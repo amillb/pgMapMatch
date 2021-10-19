@@ -277,7 +277,6 @@ class mapMatcher():
         If there are multiple segments, only matches the first one
         (for now...this is easy to modify)"""
 
-        self.clearCurrentRoutes()
         import gpxpy
         with open(fn) as f:
             tracks = gpxpy.parse(f).tracks
@@ -289,15 +288,23 @@ class mapMatcher():
             raise Warning('GPX file %s contains multiple segments on track 1. Only parsing the first one.' % fn)
 
         traceSegment = tracks[0].segments[0]
-        if not(traceSegment.has_times()) and any([pt.time is None for pt in traceSegment.points]):  # second is because of bug in gpxpy that doesn't correctly return has_times for short traces
-            raise Exception('GPX file %s track 1 has no readable timestamps' % fn)
+        self.matchGPXTraceSegment(traceSegment)
 
-        self.traceLineStr = 'ST_Transform(ST_SetSRID(ST_MakeLine(ARRAY['+', '.join([
-                            'ST_MakePointM('+str(pt.longitude)+','+str(pt.latitude)+',' +
-                            str(int((pt.time.replace(tzinfo=None) - datetime.datetime(1970, 1, 1)).total_seconds()))+')'
-                            for pt in traceSegment.points])+']),4326),%s)' % self.streets_srid
-        self.startEndPts = ['ST_Transform(ST_SetSRID(ST_MakePoint('+str(np.round(pt.longitude,5))+','
-                            + str(np.round(pt.latitude,5))+'),4326),'+self.streets_srid+')' for pt in [traceSegment.points[0], traceSegment.points[-1]]]
+    def matchGPXTraceSegment(self, traceSegment):
+        """Equivalent to matchPostgresTrace for a GPX trace segment object
+        (avoid writing out GPX files)"""
+
+        self.clearCurrentRoutes()
+        if not (traceSegment.has_times()) and any([pt.time is None for pt in traceSegment.points]):  # second is because of bug in gpxpy that doesn't correctly return has_times for short traces
+            raise Exception('GPX track has no readable timestamps')
+
+        self.traceLineStr = 'ST_Transform(ST_SetSRID(ST_MakeLine(ARRAY[' + ', '.join([
+            'ST_MakePointM(' + str(pt.longitude) + ',' + str(pt.latitude) + ',' +
+            str(int((pt.time.replace(tzinfo=None) - datetime.datetime(1970, 1, 1)).total_seconds())) + ')'
+            for pt in traceSegment.points]) + ']),4326),%s)' % self.streets_srid
+        self.startEndPts = ['ST_Transform(ST_SetSRID(ST_MakePoint(' + str(np.round(pt.longitude, 5)) + ','
+                            + str(np.round(pt.latitude, 5)) + '),4326),' + self.streets_srid + ')' for pt in
+                            [traceSegment.points[0], traceSegment.points[-1]]]
 
         self.matchTrace()
 

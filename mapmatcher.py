@@ -970,7 +970,7 @@ class mapMatcher():
         backpt = sparse.lil_matrix((self.N, self.nids.max()+1), dtype=np.int32)
 
         # initialization
-        trellis_0 = np.repeat(self.ptsDf.loc[[0], 'distprob'], 2) * weight_1stlast
+        trellis_0 = (np.repeat(self.ptsDf.loc[[0], 'distprob'], 2) * weight_1stlast).values
         lastidx1, lastidx2 = 0, trellis_0.shape[0]
         for nid in self.nids[1:]:
 
@@ -989,11 +989,11 @@ class mapMatcher():
             LL = temporalLL(transScoreArr) + topologicalLL(distratioArr)
 
             # 1st term is the probability from the previous iteration. 2nd term is observation probability. 3rd term is the transition probability
-            trellis_1 = np.nanmax(np.broadcast_to(trellis_0[:, None], (trellis_0.shape[0], iterN)) +
-                                  (np.repeat(self.ptsDf.loc[nid-nToSkip:nid, 'distprob'], 2)-self.skip_penalty*np.repeat(np.array(nid-self.ptsDf.loc[nid-nToSkip:nid].index)**2, 2))[:, None].T +
+            trellis_1 = np.nanmax(np.broadcast_to(trellis_0.reshape(-1, 1), (trellis_0.shape[0], iterN)) +
+                                  (np.repeat(self.ptsDf.loc[nid-nToSkip:nid, 'distprob'], 2)-self.skip_penalty*np.repeat(np.array(nid-self.ptsDf.loc[nid-nToSkip:nid].index)**2, 2)).values.reshape(-1, 1).T +
                                   LL, 0)
 
-            backpt[idx1:idx2, nid] = np.nanargmax(np.broadcast_to(trellis_0[:, None], (trellis_0.shape[0], iterN)) + LL, 0)[:, None] + lastidx1 + 1
+            backpt[idx1:idx2, nid] = np.nanargmax(np.broadcast_to(trellis_0.reshape(-1, 1), (trellis_0.shape[0], iterN)) + LL, 0).reshape(-1, 1) + lastidx1 + 1
 
             trellis_0 = trellis_1
             lastidx1, lastidx2 = idx1, idx2

@@ -194,6 +194,12 @@ class dbConnection():
         colNames = self.execfetch(cmd)
         return [cn[0] for cn in colNames]
 
+    def copy_from(self, file, table):
+        if self.cursor is None:
+            self.cur()
+        """Copy CSV into table"""
+        return self.cursor.copy_from(file, table, sep=',')
+    
     def addColumns(self, columns, table, skipIfExists=False, dropOld=False):
         """Columns should be a tuple of (name, type) or a list of tuples"""
         if isinstance(columns, tuple):

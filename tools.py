@@ -67,7 +67,7 @@ def getPgEngine(pgLogin=None):
 class dbConnection():
     def __init__(self, user=None, db=None, host=None, requirePassword=True,
                  pgLogin=None, schema=None, role=None, groupRole=None, curType='default',
-                 verbose=True, logger=None):
+                 timeout=None, verbose=True, logger=None):
         """
         This returns a connection to the database.
         If role is not None, new tables will be owned by this role
@@ -93,6 +93,9 @@ class dbConnection():
         # Connect to database
         coninfo = ' '.join([{'db': 'dbname', 'pw': 'password'}.get(key, key)+' = '+val
                            for key, val in self.pgLogin.items() if key not in ['requirePassword', 'gotPassword', 'schema']])
+        if timeout is not None:
+            coninfo = "options ='-c statement_timeout={}s' ".format(timeout) + coninfo
+
         con = psycopg2.connect(coninfo)
         con.set_isolation_level(0)   # autocommit - see http://stackoverflow.com/questions/1219326/how-do-i-do-database-transactions-with-psycopg2-python-db-api
         self.cursor = None

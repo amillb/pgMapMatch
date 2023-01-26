@@ -327,6 +327,9 @@ class mapMatcher():
 
         for nid1, rr1 in self.ptsDf.loc[:self.nids[-2]].iterrows():
             rr1 = rr1.to_dict()
+            # iterrows loses the dtype of the ints (converts them to floats), and only ints can index a sparse matrix
+            for kk in ['edge','source','target']:
+                rr1[kk] = int(rr1[kk])
             for dir1 in [0, -1]:
                 idx1 = int(rr1['rownum']*2-dir1)
                 # fill diagonal
@@ -336,6 +339,8 @@ class mapMatcher():
                 seglength, lastnid = 0., -1
                 for nid2, rr2 in self.ptsDf.loc[nid1+1:nid1+1+max_skip].drop_duplicates('edge').iterrows():  # max_skip is the maximum number of rows to skip. We drop duplicates because if this edge was done at a previous nid, we can skip
                     rr2 = rr2.to_dict()
+                    for kk in ['edge','source','target']:
+                        rr2[kk] = int(rr2[kk])
                     if nid2 != lastnid:  # update seglength if a new nid is being entered, and pass it to the scores functions
                         seglength += rr2['seglength']
                         lastnid = nid2

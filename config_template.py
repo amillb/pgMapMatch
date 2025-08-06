@@ -49,7 +49,7 @@ streetGeomCol = 'geom_way'  # geometry column (LineString) for street edge
 startNodeCol = 'source'     # id of node at which the street edge starts
 endNodeCol = 'target'       # id of node at which the street edge ends
 travelCostCol = 'cost'      # generalized cost to go from startNode to endNode
-travelCostReverseCol = 'reverse_cost'  # generalized cost to go from endNode to startNode. Can be same as travelCostCol if you have no one-way streets
+travelCostReverseCol = 'reverse_co'  # generalized cost to go from endNode to startNode. Can be same as travelCostCol if you have no one-way streets
 streetLengthCol = 'km'      # length of street, in km
 speedLimitCol = 'kmh'       # speed limit on street, in km per hour
 

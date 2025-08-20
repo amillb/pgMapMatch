@@ -26,27 +26,6 @@ except ModuleNotFoundError:
     raise Warning('config.py not found. Using config_template.py instead')
     from .config_template import *
 
-def update_dok(dok_matrix, d):
-    """Update a dok sparse matrix from a dict d
-    Older versions of scipy have a convenient and fast update method
-    For newer versions, a slower iteration is needed
-    See https://github.com/scipy/scipy/issues/8338"""
-    
-    assert isinstance(dok_matrix, scipy.sparse._dok.dok_matrix) and isinstance(d, dict)
-
-    if hasattr(dok_matrix, '_update'): # older version, can use .update() or ._update()
-        try:
-            dok_matrix.update(d)
-        except NotImplementedError:  # update the method for future calls
-            dok_matrix.update = dok_matrix._update
-            dok_matrix.update(d)
-    else:
-        row_indices = [k1 for k1, k2 in d.keys()]
-        col_indices = [k2 for k1, k2 in d.keys()]
-        dok_matrix[row_indices,col_indices] = list(d.values())
-
-    return dok_matrix
-
 class traceCleaner():
     def __init__(self, traceTable, idName, geomNameOld, geomNameNew=None,
                  maxSpeed=maxSpeed, logFn=None):
@@ -687,10 +666,10 @@ class mapMatcher():
                           WHERE id3=s.id GROUP BY id1;''' % dict(self.cmdDict, **{'n1': str(n1), 'n2s': str(list(n2sToDo))})
                 result = self.db.execfetch(cmd)
                 result = [(rr[0], rr[1], rr[2]) if rr[1] >= 0 else (rr[0], 10000000, 10000000) for rr in result]
-                self.costMatrix = update_dok(self.costMatrix, dict([((n1, ff[0]), ff[1]) for ff in result]))
-                self.distMatrix = update_dok(self.distMatrix, dict([((n1, ff[0]), ff[2]) for ff in result]))
-                self.costMatrix = update_dok(self.costMatrix, {(n1, n1): 0})
-                self.distMatrix = update_dok(self.distMatrix, {(n1, n1): 0})
+                self.costMatrix = self.costMatrix._dict.update(dict([((n1, ff[0]), ff[1]) for ff in result]))
+                self.distMatrix = self.distMatrix._dict.update(dict([((n1, ff[0]), ff[2]) for ff in result]))
+                self.costMatrix = self.distMatrix._dict.update({(n1, n1): 0})
+                self.distMatrix = self.distMatrix._dict.update({(n1, n1): 0})
 
         if 1:
             nodeList = np.unique(self.edgesDf.loc[self.ptsDf.edge.unique(), ['source', 'target']].values.flatten())
@@ -709,17 +688,17 @@ class mapMatcher():
                               WHERE s.%(streetIdCol)s=pgr.edge
                               GROUP BY start_vid,end_vid;''' % dict(self.cmdDict, **{'srcnodes': str(list(nodesToDo_src)), 'tgtnodes': str(list(nodesToDo_tgt))})
                         result = self.db.execfetch(cmd)
-                        self.costMatrix = update_dok(self.costMatrix, dict({((ff[0], ff[1]), ff[2]) if ff[2] >= 0 else ((ff[0], ff[1]), 10000000) for ff in result}))
-                        self.distMatrix = update_dok(self.distMatrix, dict({((ff[0], ff[1]), ff[3]) if ff[3] >= 0 else ((ff[0], ff[1]), 10000000) for ff in result}))
+                        self.costMatrix = self.costMatrix._dict.update(dict({((ff[0], ff[1]), ff[2]) if ff[2] >= 0 else ((ff[0], ff[1]), 10000000) for ff in result}))
+                        self.distMatrix = self.distMatrix._dict.update(dict({((ff[0], ff[1]), ff[3]) if ff[3] >= 0 else ((ff[0], ff[1]), 10000000) for ff in result}))
 
                         # add route to/from same node
-                        self.costMatrix = update_dok(self.costMatrix, dict({((nn, nn), 0.0) for nn in nodesToDo_src}))
-                        self.distMatrix = update_dok(self.distMatrix, dict({((nn, nn), 0.0) for nn in nodesToDo_src}))
+                        self.costMatrix = self.costMatrix._dict.update(dict({((nn, nn), 0.0) for nn in nodesToDo_src}))
+                        self.distMatrix = self.distMatrix._dict.update(dict({((nn, nn), 0.0) for nn in nodesToDo_src}))
 
                         # add route where pgr_dijkstra does not return a result, usually because of islands
                         problemNodes = dict({((n1, n2), 10000000) for n1 in nodesToDo_src for n2 in nodesToDo_tgt if (n1, n2) not in self.costMatrix})
-                        self.costMatrix = update_dok(self.costMatrix, problemNodes)
-                        self.distMatrix = update_dok(self.distMatrix, problemNodes)
+                        self.costMatrix = self.costMatrix._dict.update(problemNodes)
+                        self.distMatrix = self.distMatrix._dict.update(problemNodes)
 
         self.timing['updateCostMatrix'] += (time.time()-starttime)
 

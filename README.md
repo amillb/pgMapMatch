@@ -18,6 +18,8 @@ For questions and feedback, please contact [Adam Millard-Ball](https://people.uc
 
 3. Copy `config_template.py` to `config.py`, and adjust the configuration settings. You will almost certainly need to adjust the postgres login information in the `pgInfo` dictionary. If you don't use osm2po, you may also need to adjust the column names for the streets table specified in `config.py`. The default parameters in `config_template.py` assume your units are in meters, so it will be easiest to use a projection that is also in meters. If you use feet, you will need to change the parameters, and/or risk getting unexpected results.
 
+4. See [this issue](https://github.com/amillb/pgMapMatch/issues/32) for further advice (thanks @mbonsma). And feel free to contact me if you have problems.
+
 ## Usage ##
 You can match traces from GPX files (a `time` field must be included), or a PostgreSQL table. For the postgres option, the traces must be LineStrings with an M coordinate providing the timestamp of each point, and the projection must be the same as the table of streets.
 

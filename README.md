@@ -11,6 +11,7 @@ For questions and feedback, please contact [Adam Millard-Ball](https://people.uc
 2. You will need to load a table of street edges into a PostgreSQL database. The easiest way to do this is:
   * Download an extract from [OpenStreetMap](http://www.openstreetmap.org/), such as those produced for metropolitan areas by [Mapzen](https://mapzen.com/data/metro-extracts/).
   * Use [osm2po](http://osm2po.de) to load the OpenStreetMap data into PostgreSQL. You can use another OSM import tool, but you will need to make sure your street column names match those that are in `config.py` (see Step 3 below).
+  * The `cost` and `reverse_cost` columns give the time cost (seconds) to traverse each edge. A very large value indicates a one-way street. See the `pgrouting` documentation and [other threads](https://gis.stackexchange.com/questions/198200/how-are-cost-and-reverse-cost-computed-in-pgrouting) for more details. 
   * Transform the street geometries to a suitable projection, for example: 
 
      `ALTER TABLE streets_table ALTER COLUMN geom_way TYPE Geometry(LineString, your_srid) USING ST_Transform(geom_way, your_srid);` 

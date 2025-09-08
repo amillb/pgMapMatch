@@ -107,12 +107,12 @@ class traceCleaner():
                 df.loc[mask, oldCols] = df.loc[mask, newCols].values
                 df.loc[mask, ['speed'+str(s) for s in range(max(lag+1, 6-gSize), 6)]] = np.nan
 
-            ptsToDrop += list(df[df.dropPt].set_index('traceid').ptid.iteritems())
+            ptsToDrop += list(df[df.dropPt].set_index('traceid').ptid.items())
             df = df[df.dropPt == False]
 
         # Finally, select any 'singletons' where there is one errant point
         # that's not picked up by the lagged values
-        ptsToDrop += list(df[df.speed1 > self.maxSpeed].set_index('traceid').ptid.iteritems())
+        ptsToDrop += list(df[df.dropPt].set_index('traceid').ptid.items())
 
         self.ptsToDrop = ptsToDrop
 
@@ -258,7 +258,7 @@ class mapMatcher():
         try:
             self.costMatrix.update({})
             self.distMatrix.update({})
-        except NotImplementedError:  
+        except NotImplementedError:
             try:
                 self.costMatrix.update = self.costMatrix._update
                 self.distMatrix.update = self.distMatrix._update
@@ -466,7 +466,7 @@ class mapMatcher():
             cmd = '''UPDATE %(traceTable)s SET ''' % cDict
             if writeEdgeIds:    cmd += '''%(edgeIdCol)s = ARRAY%(edges)s,''' % cDict
             if writeMatchScore:
-                if np.isnan(match_score): 
+                if np.isnan(match_score):
                     cmd += 'match_score=Null,'
                 else:
                     cmd += 'match_score=%s,' % np.float32(match_score)   # float32 needed to avoid underflow with very low scores
@@ -611,7 +611,7 @@ class mapMatcher():
         xb = self.qualityModelCoeffs['intercept']
         if 'frechet_dist' in self.qualityModelCoeffs :
             if self.projectionRatio is None:        # get ratio of projected units to meters (to be able to use Frechet distance)
-                cmd = '''SELECT AVG(ST_Length(%(streetGeomCol)s) / st_length(ST_Transform(%(streetGeomCol)s, 4326)::geography)) 
+                cmd = '''SELECT AVG(ST_Length(%(streetGeomCol)s) / st_length(ST_Transform(%(streetGeomCol)s, 4326)::geography))
                             FROM %(streetsTable)s WHERE ST_Length(%(streetGeomCol)s)>0 LIMIT 1000;''' % self.cmdDict
                 self.projectionRatio = self.db.execfetch(cmd)[0][0]
                 if self.verbose: print('Using projection ratio (map units to meters) of {:.3f}'.format(self.projectionRatio ))
@@ -786,7 +786,7 @@ class mapMatcher():
             frcsAlong = self.ptsDf[self.ptsDf.edge==route[-1][0]].loc[nid:,'frcalong']
             threshold = 0.1 # how many km the furthest GPS ping has to be along, in order to add a uturn
             if ((route[-1][1] == 0 and frcsAlong.max()*self.edgesDf.loc[route[-1][0],'km'] > threshold) or
-                (route[-1][1] == 1 and (1-frcsAlong.min())*self.edgesDf.loc[route[-1][0],'km'] > threshold)):  
+                (route[-1][1] == 1 and (1-frcsAlong.min())*self.edgesDf.loc[route[-1][0],'km'] > threshold)):
                 fullroute.append(fullroute[-1])
                 uturnFrcs[-1] = (frcsAlong.min(), frcsAlong.max())
                 uturnFrcs.append(-1)
@@ -802,7 +802,7 @@ class mapMatcher():
         lastEdgeLength = self.edgesDf.loc[self.bestRoute[-1], 'km']
         frc = self.ptsDf.frcalong[self.ptsDf.rownum == int(d[-1]/2)].values[0]
         if d[-1] % 2 == 1: frc = 1-frc  # reverse
-        while (len(self.bestRoute) > 1 and 
+        while (len(self.bestRoute) > 1 and
               (lastEdgeLength*frc < 0.005 or (self.allowFinalUturn is False and self.bestRoute[-1] == self.bestRoute[-2]))):
             self.bestRoute = self.bestRoute[:-1]
             self.uturnFrcs = self.uturnFrcs[:-1]
@@ -1064,7 +1064,7 @@ class mapMatcher():
         else: # use new PostGIS function
             if self.traceId:
                 frechetGeomName = self.cleanedGeomName if self.cleanedGeomName else self.geomName
-                frechet_dist = self.db.execfetch('''SELECT ST_FrechetDistance(%(newGeomName)s, %(frechetGeomName)s, 0.05) 
+                frechet_dist = self.db.execfetch('''SELECT ST_FrechetDistance(%(newGeomName)s, %(frechetGeomName)s, 0.05)
                                                         FROM %(traceTable)s WHERE %(idName)s=%(traceId)s;''' % dict(self.cmdDict, **{'traceId': self.traceId, 'frechetGeomName': frechetGeomName}))[0][0]
             else:
                 if self.matchedLineString is None: self.getMatchedLineString()
@@ -1262,7 +1262,7 @@ class qualityPredictor():
         engine = mmt.getPgEngine(pgLogin=pgInfo)
 
         df.pr_good.to_sql('tmpimport', engine, if_exists='replace')
-        self.db.fix_permissions_of_new_table('tmpimport') 
+        self.db.fix_permissions_of_new_table('tmpimport')
         print('Merging and cleaning up')
         self.db.execute('ALTER TABLE %s DROP COLUMN IF EXISTS pr_good;' % table)
         self.db.execute('ALTER TABLE %s ADD COLUMN pr_good real;' % table)
